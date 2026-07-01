@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -87,10 +87,15 @@ function NewAssessment() {
   const [resumedAt, setResumedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [autoStatus, setAutoStatus] = useState<"idle" | "pending" | "saving" | "saved">("idle");
+  const hydratedRef = useRef(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hydrate from localStorage after mount (SSR-safe).
   useEffect(() => {
     const draft = loadDraft();
+    hydratedRef.current = true;
     if (!draft) return;
     setNarrative(draft.narrative);
     setStep(draft.step);
@@ -100,6 +105,34 @@ function NewAssessment() {
     setResumedAt(draft.savedAt);
     setLastSavedAt(draft.savedAt);
   }, []);
+
+  // Autosave: debounce writes ~1.2s after any tracked state change.
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    // Nothing worth persisting yet.
+    if (!narrative.trim() && !analyzed && !clockStarted && step === 1) return;
+
+    setAutoStatus("pending");
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      setAutoStatus("saving");
+      const savedAt = new Date().toISOString();
+      const draft: SavedDraft = { narrative, step, analyzed, strategy, clockStarted, savedAt };
+      try {
+        window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+        setLastSavedAt(savedAt);
+        setAutoStatus("saved");
+        if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current);
+        savedFlashTimer.current = setTimeout(() => setAutoStatus("idle"), 1600);
+      } catch {
+        setAutoStatus("idle");
+      }
+    }, 1200);
+
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [narrative, step, analyzed, strategy, clockStarted]);
 
   const saveDraft = () => {
     if (saving) return;
@@ -125,6 +158,8 @@ function NewAssessment() {
     } catch {
       /* ignore */
     }
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current);
     setNarrative("");
     setStep(1);
     setAnalyzed(false);
@@ -132,6 +167,7 @@ function NewAssessment() {
     setClockStarted(false);
     setResumedAt(null);
     setLastSavedAt(null);
+    setAutoStatus("idle");
     toast("Draft discarded — started fresh assessment");
   };
 
@@ -176,6 +212,7 @@ function NewAssessment() {
               <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Reference</div>
               <div className="font-mono text-sm">INC-2042</div>
             </div>
+            <AutosaveIndicator status={autoStatus} lastSavedAt={lastSavedAt} />
             <button
               onClick={saveDraft}
               disabled={saving || (!narrative.trim() && !analyzed && !clockStarted)}
