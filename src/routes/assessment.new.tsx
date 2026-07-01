@@ -326,6 +326,49 @@ function formatSavedAt(iso: string): string {
   }
 }
 
+function AutosaveIndicator({
+  status,
+  lastSavedAt,
+}: {
+  status: "idle" | "pending" | "saving" | "saved";
+  lastSavedAt: string | null;
+}) {
+  let label: string;
+  let icon: React.ReactNode;
+  let tone: string;
+  switch (status) {
+    case "pending":
+      label = "Unsaved changes…";
+      icon = <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse" />;
+      tone = "text-muted-foreground";
+      break;
+    case "saving":
+      label = "Saving…";
+      icon = <Loader2 className="h-3 w-3 animate-spin" />;
+      tone = "text-muted-foreground";
+      break;
+    case "saved":
+      label = "Saved";
+      icon = <CheckCircle2 className="h-3 w-3 text-success" />;
+      tone = "text-success";
+      break;
+    default:
+      if (!lastSavedAt) return null;
+      label = `Saved · ${formatSavedAt(lastSavedAt)}`;
+      icon = <CheckCircle2 className="h-3 w-3 text-muted-foreground" />;
+      tone = "text-muted-foreground";
+  }
+  return (
+    <div
+      className={`inline-flex items-center gap-1.5 rounded-md border border-border bg-card/50 px-2.5 py-2 text-[11px] font-mono ${tone}`}
+      aria-live="polite"
+    >
+      {icon}
+      <span>{label}</span>
+    </div>
+  );
+}
+
 function StepOne({
   narrative,
   setNarrative,
