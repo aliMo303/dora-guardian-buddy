@@ -16,6 +16,7 @@ import {
   Sparkles,
   Timer,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   auditTrail,
   classificationCriteria,
@@ -417,6 +418,20 @@ function StepThree({
   clockStarted: boolean;
   setClockStarted: (b: boolean) => void;
 }) {
+  const [arming, setArming] = useState(false);
+  const confirmClassification = () => {
+    if (arming || clockStarted) return;
+    setArming(true);
+    toast.loading("Recording reviewer confirmation…", { id: "arm-clock" });
+    setTimeout(() => {
+      setArming(false);
+      setClockStarted(true);
+      toast.success("Legal clock armed — DORA 4h window active", {
+        id: "arm-clock",
+        description: "BaFin notification due by 14:45 CET.",
+      });
+    }, 1100);
+  };
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -481,11 +496,13 @@ function StepThree({
           <div className="flex gap-2">
             {!clockStarted ? (
               <button
-                onClick={() => setClockStarted(true)}
-                className="inline-flex items-center gap-2 rounded-md bg-danger px-4 py-2 text-sm font-medium text-danger-foreground hover:opacity-90"
+                onClick={confirmClassification}
+                disabled={arming}
+                aria-busy={arming}
+                className="inline-flex items-center gap-2 rounded-md bg-danger px-4 py-2 text-sm font-medium text-danger-foreground hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <ShieldAlert className="h-4 w-4" />
-                Confirm major incident classification
+                {arming ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
+                {arming ? "Arming legal clock…" : "Confirm major incident classification"}
               </button>
             ) : (
               <button
@@ -516,12 +533,55 @@ function AlarmClockIcon({ started }: { started: boolean }) {
 }
 
 function StepFour({ clockStarted }: { clockStarted: boolean }) {
+  const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(draftNotification);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState(false);
+
+  const copy = async () => {
+    if (copying) return;
+    setCopying(true);
+    try {
+      await navigator.clipboard.writeText(draftNotification);
+      setCopied(true);
+      toast.success("Draft copied to clipboard");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast.error("Clipboard blocked — select text manually");
+    } finally {
+      setCopying(false);
+    }
   };
+
+  const exportPdf = () => {
+    if (exporting) return;
+    setExporting(true);
+    toast.loading("Composing defensible PDF (incl. auditor trail)…", { id: "export-pdf" });
+    setTimeout(() => {
+      try {
+        const blob = new Blob([draftNotification], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "INC-2041_DORA_initial_notification.txt";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setExported(true);
+        toast.success("Defensible export ready", {
+          id: "export-pdf",
+          description: "INC-2041_DORA_initial_notification.txt downloaded.",
+        });
+        setTimeout(() => setExported(false), 2200);
+      } catch (e) {
+        toast.error("Export failed", { id: "export-pdf" });
+      } finally {
+        setExporting(false);
+      }
+    }, 1400);
+  };
+
   return (
     <div className="grid lg:grid-cols-[1fr_320px] gap-6">
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -533,14 +593,33 @@ function StepFour({ clockStarted }: { clockStarted: boolean }) {
           <div className="flex items-center gap-2">
             <button
               onClick={copy}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-[var(--surface-2)] px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+              disabled={copying}
+              aria-busy={copying}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-[var(--surface-2)] px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {copied ? <Clipboard className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "Copied" : "Copy"}
+              {copying ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : copied ? (
+                <Clipboard className="h-3.5 w-3.5 text-success" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              {copying ? "Copying…" : copied ? "Copied" : "Copy"}
             </button>
-            <button className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-              <Download className="h-3.5 w-3.5" />
-              Export defensible PDF
+            <button
+              onClick={exportPdf}
+              disabled={exporting}
+              aria-busy={exporting}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {exporting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : exported ? (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              {exporting ? "Exporting…" : exported ? "Downloaded" : "Export defensible PDF"}
             </button>
           </div>
         </div>
