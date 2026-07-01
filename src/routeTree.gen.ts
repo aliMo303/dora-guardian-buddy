@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegulatoryMappingRouteImport } from './routes/regulatory-mapping'
+import { Route as FrameworkExplorerRouteImport } from './routes/framework-explorer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssessmentNewRouteImport } from './routes/assessment.new'
 
 const RegulatoryMappingRoute = RegulatoryMappingRouteImport.update({
   id: '/regulatory-mapping',
   path: '/regulatory-mapping',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FrameworkExplorerRoute = FrameworkExplorerRouteImport.update({
+  id: '/framework-explorer',
+  path: '/framework-explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,30 +37,43 @@ const AssessmentNewRoute = AssessmentNewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/framework-explorer': typeof FrameworkExplorerRoute
   '/regulatory-mapping': typeof RegulatoryMappingRoute
   '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/framework-explorer': typeof FrameworkExplorerRoute
   '/regulatory-mapping': typeof RegulatoryMappingRoute
   '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/framework-explorer': typeof FrameworkExplorerRoute
   '/regulatory-mapping': typeof RegulatoryMappingRoute
   '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/regulatory-mapping' | '/assessment/new'
+  fullPaths:
+    | '/'
+    | '/framework-explorer'
+    | '/regulatory-mapping'
+    | '/assessment/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/regulatory-mapping' | '/assessment/new'
-  id: '__root__' | '/' | '/regulatory-mapping' | '/assessment/new'
+  to: '/' | '/framework-explorer' | '/regulatory-mapping' | '/assessment/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/framework-explorer'
+    | '/regulatory-mapping'
+    | '/assessment/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FrameworkExplorerRoute: typeof FrameworkExplorerRoute
   RegulatoryMappingRoute: typeof RegulatoryMappingRoute
   AssessmentNewRoute: typeof AssessmentNewRoute
 }
@@ -66,6 +85,13 @@ declare module '@tanstack/react-router' {
       path: '/regulatory-mapping'
       fullPath: '/regulatory-mapping'
       preLoaderRoute: typeof RegulatoryMappingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/framework-explorer': {
+      id: '/framework-explorer'
+      path: '/framework-explorer'
+      fullPath: '/framework-explorer'
+      preLoaderRoute: typeof FrameworkExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,6 +113,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FrameworkExplorerRoute: FrameworkExplorerRoute,
   RegulatoryMappingRoute: RegulatoryMappingRoute,
   AssessmentNewRoute: AssessmentNewRoute,
 }
