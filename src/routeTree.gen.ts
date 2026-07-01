@@ -9,38 +9,91 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RegulatoryMappingRouteImport } from './routes/regulatory-mapping'
+import { Route as FrameworkExplorerRouteImport } from './routes/framework-explorer'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AssessmentNewRouteImport } from './routes/assessment.new'
 
+const RegulatoryMappingRoute = RegulatoryMappingRouteImport.update({
+  id: '/regulatory-mapping',
+  path: '/regulatory-mapping',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FrameworkExplorerRoute = FrameworkExplorerRouteImport.update({
+  id: '/framework-explorer',
+  path: '/framework-explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssessmentNewRoute = AssessmentNewRouteImport.update({
+  id: '/assessment/new',
+  path: '/assessment/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/framework-explorer': typeof FrameworkExplorerRoute
+  '/regulatory-mapping': typeof RegulatoryMappingRoute
+  '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/framework-explorer': typeof FrameworkExplorerRoute
+  '/regulatory-mapping': typeof RegulatoryMappingRoute
+  '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/framework-explorer': typeof FrameworkExplorerRoute
+  '/regulatory-mapping': typeof RegulatoryMappingRoute
+  '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/framework-explorer'
+    | '/regulatory-mapping'
+    | '/assessment/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/framework-explorer' | '/regulatory-mapping' | '/assessment/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/framework-explorer'
+    | '/regulatory-mapping'
+    | '/assessment/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FrameworkExplorerRoute: typeof FrameworkExplorerRoute
+  RegulatoryMappingRoute: typeof RegulatoryMappingRoute
+  AssessmentNewRoute: typeof AssessmentNewRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/regulatory-mapping': {
+      id: '/regulatory-mapping'
+      path: '/regulatory-mapping'
+      fullPath: '/regulatory-mapping'
+      preLoaderRoute: typeof RegulatoryMappingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/framework-explorer': {
+      id: '/framework-explorer'
+      path: '/framework-explorer'
+      fullPath: '/framework-explorer'
+      preLoaderRoute: typeof FrameworkExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +101,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/assessment/new': {
+      id: '/assessment/new'
+      path: '/assessment/new'
+      fullPath: '/assessment/new'
+      preLoaderRoute: typeof AssessmentNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FrameworkExplorerRoute: FrameworkExplorerRoute,
+  RegulatoryMappingRoute: RegulatoryMappingRoute,
+  AssessmentNewRoute: AssessmentNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
