@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RegulatoryMappingRouteImport } from './routes/regulatory-mapping'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssessmentNewRouteImport } from './routes/assessment.new'
 
+const RegulatoryMappingRoute = RegulatoryMappingRouteImport.update({
+  id: '/regulatory-mapping',
+  path: '/regulatory-mapping',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -25,32 +31,43 @@ const AssessmentNewRoute = AssessmentNewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/regulatory-mapping': typeof RegulatoryMappingRoute
   '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/regulatory-mapping': typeof RegulatoryMappingRoute
   '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/regulatory-mapping': typeof RegulatoryMappingRoute
   '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/assessment/new'
+  fullPaths: '/' | '/regulatory-mapping' | '/assessment/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/assessment/new'
-  id: '__root__' | '/' | '/assessment/new'
+  to: '/' | '/regulatory-mapping' | '/assessment/new'
+  id: '__root__' | '/' | '/regulatory-mapping' | '/assessment/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  RegulatoryMappingRoute: typeof RegulatoryMappingRoute
   AssessmentNewRoute: typeof AssessmentNewRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/regulatory-mapping': {
+      id: '/regulatory-mapping'
+      path: '/regulatory-mapping'
+      fullPath: '/regulatory-mapping'
+      preLoaderRoute: typeof RegulatoryMappingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  RegulatoryMappingRoute: RegulatoryMappingRoute,
   AssessmentNewRoute: AssessmentNewRoute,
 }
 export const routeTree = rootRouteImport
