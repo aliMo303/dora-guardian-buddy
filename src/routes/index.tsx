@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlarmClock, ArrowUpRight, Activity, FileWarning, Gauge, ShieldCheck, Timer, TrendingDown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { AlarmClock, ArrowUpRight, Activity, FileWarning, Gauge, ShieldCheck, Timer, TrendingDown, Search, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { incidents, type IncidentStatus } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({
@@ -20,6 +20,13 @@ function formatCountdown(ms: number) {
   const m = Math.floor((abs % 3_600_000) / 60_000);
   const s = Math.floor((abs % 60_000) / 1000);
   return `${sign}${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+// Stable UTC formatter — avoids SSR/CSR locale mismatch
+function formatDetectedAt(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}, ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 }
 
 function useCountdown(initialMs: number | undefined) {
@@ -42,6 +49,18 @@ const statusStyle: Record<IncidentStatus, string> = {
 function Dashboard() {
   const majorDeadline = incidents.find((i) => i.status === "Major - Reportable")?.deadlineMs;
   const clock = useCountdown(majorDeadline);
+  const navigate = useNavigate();
+  const [entityFilter, setEntityFilter] = useState<"all" | "neopay">("all");
+  const [rangeFilter, setRangeFilter] = useState<"7d" | "24h" | "30d">("7d");
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return incidents.filter((i) => {
+      if (q && !`${i.id} ${i.title} ${i.owner}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [query]);
 
   return (
     <div>
@@ -126,8 +145,32 @@ function Dashboard() {
               <p className="text-xs text-muted-foreground">Sorted by regulatory urgency, then detection time.</p>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="rounded-md bg-accent px-2 py-1">All entities</span>
-              <span className="rounded-md bg-accent px-2 py-1">Last 7 days</span>
+              <div className="flex items-center gap-1.5 rounded-md border border-border bg-[var(--surface-2)] px-2 py-1">
+                <Search className="h-3.5 w-3.5" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Filter incidents…"
+                  className="w-40 bg-transparent text-xs placeholder:text-muted-foreground focus:outline-none"
+                />
+                {query && (
+                  <button onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              <FilterChip
+                active={entityFilter === "all"}
+                onClick={() => setEntityFilter(entityFilter === "all" ? "neopay" : "all")}
+                label={entityFilter === "all" ? "All entities" : "Neopay Bank AG"}
+              />
+              <FilterChip
+                active
+                onClick={() =>
+                  setRangeFilter(rangeFilter === "24h" ? "7d" : rangeFilter === "7d" ? "30d" : "24h")
+                }
+                label={rangeFilter === "24h" ? "Last 24 hours" : rangeFilter === "7d" ? "Last 7 days" : "Last 30 days"}
+              />
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -143,8 +186,19 @@ function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {incidents.map((inc) => (
-                  <tr key={inc.id} className="hover:bg-accent/40 transition-colors">
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-8 text-center text-xs text-muted-foreground">
+                      No incidents match "{query}".
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((inc) => (
+                  <tr
+                    key={inc.id}
+                    onClick={() => navigate({ to: "/assessment/new" })}
+                    className="hover:bg-accent/40 transition-colors cursor-pointer"
+                  >
                     <td className="px-5 py-3 font-mono text-[12px] text-muted-foreground">{inc.id}</td>
                     <td className="px-5 py-3">
                       <div className="font-medium">{inc.title}</div>
@@ -157,7 +211,7 @@ function Dashboard() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-muted-foreground">{inc.owner}</td>
-                    <td className="px-5 py-3 text-muted-foreground text-xs">{new Date(inc.detectedAt).toLocaleString("en-GB")}</td>
+                    <td className="px-5 py-3 text-muted-foreground text-xs font-mono">{formatDetectedAt(inc.detectedAt)}</td>
                     <td className="px-5 py-3 text-right">
                       {inc.status === "Major - Reportable" && inc.deadlineMs ? (
                         <span className="font-mono text-danger tabular-nums">{formatCountdown(clock)}</span>
