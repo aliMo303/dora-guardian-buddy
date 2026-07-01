@@ -289,6 +289,21 @@ function MetricCard({
   );
 }
 
+function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-md px-2 py-1 transition-colors ${
+        active
+          ? "bg-primary/15 text-foreground ring-1 ring-primary/30"
+          : "bg-accent text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 function DeadlinePill({ regime, window, left, tone }: { regime: string; window: string; left: string; tone: "danger" | "warning" | "muted" }) {
   const toneMap = {
     danger: "border-danger/40 bg-danger/10 text-danger",
