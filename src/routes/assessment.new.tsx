@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -12,6 +12,8 @@ import {
   Gavel,
   Loader2,
   Play,
+  RotateCcw,
+  Save,
   ShieldAlert,
   Sparkles,
   Timer,
@@ -37,6 +39,28 @@ export const Route = createFileRoute("/assessment/new")({
 
 type Step = 1 | 2 | 3 | 4;
 
+const DRAFT_STORAGE_KEY = "dora-copilot:assessment-draft:INC-2042";
+
+interface SavedDraft {
+  narrative: string;
+  step: Step;
+  analyzed: boolean;
+  strategy: "strict" | "comparative";
+  clockStarted: boolean;
+  savedAt: string;
+}
+
+function loadDraft(): SavedDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SavedDraft;
+  } catch {
+    return null;
+  }
+}
+
 const steps: { id: Step; label: string; hint: string }[] = [
   { id: 1, label: "Narrative", hint: "Paste raw incident context" },
   { id: 2, label: "AI Judgment", hint: "Criterion-by-criterion breakdown" },
@@ -60,6 +84,56 @@ function NewAssessment() {
   const [stageIdx, setStageIdx] = useState(0);
   const [strategy, setStrategy] = useState<"strict" | "comparative">("strict");
   const [clockStarted, setClockStarted] = useState(false);
+  const [resumedAt, setResumedAt] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+
+  // Hydrate from localStorage after mount (SSR-safe).
+  useEffect(() => {
+    const draft = loadDraft();
+    if (!draft) return;
+    setNarrative(draft.narrative);
+    setStep(draft.step);
+    setAnalyzed(draft.analyzed);
+    setStrategy(draft.strategy);
+    setClockStarted(draft.clockStarted);
+    setResumedAt(draft.savedAt);
+    setLastSavedAt(draft.savedAt);
+  }, []);
+
+  const saveDraft = () => {
+    if (saving) return;
+    setSaving(true);
+    const savedAt = new Date().toISOString();
+    const draft: SavedDraft = { narrative, step, analyzed, strategy, clockStarted, savedAt };
+    try {
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      setLastSavedAt(savedAt);
+      toast.success("Draft saved", {
+        description: "Narrative, generated outputs and clock state preserved for this browser.",
+      });
+    } catch {
+      toast.error("Could not save draft — storage unavailable");
+    } finally {
+      setTimeout(() => setSaving(false), 400);
+    }
+  };
+
+  const discardDraft = () => {
+    try {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    setNarrative("");
+    setStep(1);
+    setAnalyzed(false);
+    setStrategy("strict");
+    setClockStarted(false);
+    setResumedAt(null);
+    setLastSavedAt(null);
+    toast("Draft discarded — started fresh assessment");
+  };
 
   const runAnalysis = () => {
     if (!narrative.trim()) return;
@@ -97,11 +171,46 @@ function NewAssessment() {
               classification and a regulator-ready draft notification.
             </p>
           </div>
-          <div className="text-right">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Reference</div>
-            <div className="font-mono text-sm">INC-2042</div>
+          <div className="flex items-start gap-3">
+            <div className="text-right">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Reference</div>
+              <div className="font-mono text-sm">INC-2042</div>
+            </div>
+            <button
+              onClick={saveDraft}
+              disabled={saving || (!narrative.trim() && !analyzed && !clockStarted)}
+              aria-busy={saving}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium hover:border-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {saving ? "Saving…" : "Save draft"}
+            </button>
           </div>
         </div>
+
+        {(resumedAt || lastSavedAt) && (
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2 text-foreground">
+              <RotateCcw className="h-3.5 w-3.5 text-primary" />
+              <span>
+                {resumedAt ? "Resumed from saved draft" : "Draft saved locally"} ·{" "}
+                <span className="font-mono text-muted-foreground">
+                  {formatSavedAt(lastSavedAt ?? resumedAt!)}
+                </span>
+                {" · "}
+                <span className="text-muted-foreground">
+                  step {step}/4{clockStarted ? " · clock armed" : ""}
+                </span>
+              </span>
+            </div>
+            <button
+              onClick={discardDraft}
+              className="text-[11px] text-muted-foreground hover:text-danger underline underline-offset-2"
+            >
+              Discard & start over
+            </button>
+          </div>
+        )}
 
         <ol className="mt-5 flex items-center gap-2 overflow-x-auto">
           {steps.map((s, idx) => {
@@ -168,6 +277,16 @@ function NewAssessment() {
       </div>
     </div>
   );
+}
+
+function formatSavedAt(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+  } catch {
+    return iso;
+  }
 }
 
 function StepOne({
