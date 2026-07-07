@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, FilePlus2, GitCompareArrows, BookOpen, ShieldAlert, Bell, Search } from "lucide-react";
+import { TrustFooter } from "@/components/trust-footer";
 import type { ReactNode } from "react";
 
 const navItems = [
@@ -88,6 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 min-w-0">{children}</main>
+        <TrustFooter />
       </div>
     </div>
   );

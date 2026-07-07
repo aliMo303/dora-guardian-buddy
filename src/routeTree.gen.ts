@@ -9,14 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SecurityRouteImport } from './routes/security'
 import { Route as RegulatoryMappingRouteImport } from './routes/regulatory-mapping'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as FrameworkExplorerRouteImport } from './routes/framework-explorer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssessmentNewRouteImport } from './routes/assessment.new'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegulatoryMappingRoute = RegulatoryMappingRouteImport.update({
   id: '/regulatory-mapping',
   path: '/regulatory-mapping',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FrameworkExplorerRoute = FrameworkExplorerRouteImport.update({
@@ -38,20 +56,29 @@ const AssessmentNewRoute = AssessmentNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/framework-explorer': typeof FrameworkExplorerRoute
+  '/privacy': typeof PrivacyRoute
   '/regulatory-mapping': typeof RegulatoryMappingRoute
+  '/security': typeof SecurityRoute
+  '/terms': typeof TermsRoute
   '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/framework-explorer': typeof FrameworkExplorerRoute
+  '/privacy': typeof PrivacyRoute
   '/regulatory-mapping': typeof RegulatoryMappingRoute
+  '/security': typeof SecurityRoute
+  '/terms': typeof TermsRoute
   '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/framework-explorer': typeof FrameworkExplorerRoute
+  '/privacy': typeof PrivacyRoute
   '/regulatory-mapping': typeof RegulatoryMappingRoute
+  '/security': typeof SecurityRoute
+  '/terms': typeof TermsRoute
   '/assessment/new': typeof AssessmentNewRoute
 }
 export interface FileRouteTypes {
@@ -59,32 +86,69 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/framework-explorer'
+    | '/privacy'
     | '/regulatory-mapping'
+    | '/security'
+    | '/terms'
     | '/assessment/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/framework-explorer' | '/regulatory-mapping' | '/assessment/new'
+  to:
+    | '/'
+    | '/framework-explorer'
+    | '/privacy'
+    | '/regulatory-mapping'
+    | '/security'
+    | '/terms'
+    | '/assessment/new'
   id:
     | '__root__'
     | '/'
     | '/framework-explorer'
+    | '/privacy'
     | '/regulatory-mapping'
+    | '/security'
+    | '/terms'
     | '/assessment/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FrameworkExplorerRoute: typeof FrameworkExplorerRoute
+  PrivacyRoute: typeof PrivacyRoute
   RegulatoryMappingRoute: typeof RegulatoryMappingRoute
+  SecurityRoute: typeof SecurityRoute
+  TermsRoute: typeof TermsRoute
   AssessmentNewRoute: typeof AssessmentNewRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/regulatory-mapping': {
       id: '/regulatory-mapping'
       path: '/regulatory-mapping'
       fullPath: '/regulatory-mapping'
       preLoaderRoute: typeof RegulatoryMappingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/framework-explorer': {
@@ -114,7 +178,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FrameworkExplorerRoute: FrameworkExplorerRoute,
+  PrivacyRoute: PrivacyRoute,
   RegulatoryMappingRoute: RegulatoryMappingRoute,
+  SecurityRoute: SecurityRoute,
+  TermsRoute: TermsRoute,
   AssessmentNewRoute: AssessmentNewRoute,
 }
 export const routeTree = rootRouteImport
