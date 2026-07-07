@@ -252,6 +252,36 @@ function Dashboard() {
             tone="muted"
           />
         </div>
+
+        {/* About us section */}
+        <section className="rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="grid place-items-center h-6 w-6 rounded-md bg-accent text-foreground">
+              <Users className="h-4 w-4" />
+            </span>
+            <h2 className="text-sm font-semibold">About us</h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-5">
+            <div>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">Mission</h3>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                DORA Copilot is built by ICT risk and compliance teams to turn regulatory complexity into fast, defensible incident decisions. We combine DORA, NIS2 and GDPR deadlines into a single command centre so teams respond instead of chasing paperwork.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">Who we are</h3>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                Neopay Bank AG's GRC function, led by ICT Risk Officers and supported by the second line of defence. We validate every classification against the EBA DORA RTS and the institution's risk appetite before submission.
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <AboutPill icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Risk-led" />
+            <AboutPill icon={<Target className="h-3.5 w-3.5" />} label="Deadline-driven" />
+            <AboutPill icon={<Users className="h-3.5 w-3.5" />} label="Team-first" />
+            <AboutPill icon={<BookOpen className="h-3.5 w-3.5" />} label="Evidence-based" />
+          </div>
+        </section>
       </div>
     </div>
   );
