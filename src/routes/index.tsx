@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlarmClock, ArrowUpRight, Activity, FileWarning, Gauge, ShieldCheck, Timer, TrendingDown, Search, X, Users, Target } from "lucide-react";
+import { AlarmClock, ArrowUpRight, Activity, FileWarning, Gauge, ShieldCheck, Timer, TrendingDown, Search, X, Users, Target, BookOpen } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { incidents, type IncidentStatus } from "@/lib/mock-data";
 
@@ -376,6 +376,15 @@ function QualityCard({
       </div>
       <div className={`mt-3 text-2xl font-semibold font-display tabular-nums ${accent}`}>{value}</div>
       <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function AboutPill({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-border bg-[var(--surface-2)] px-3 py-2 text-xs text-muted-foreground">
+      <span className="text-foreground">{icon}</span>
+      {label}
     </div>
   );
 }
