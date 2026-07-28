@@ -1,42 +1,54 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlarmClock, ArrowUpRight, Activity, FileWarning, Gauge, ShieldCheck, Timer, TrendingDown, Search, X, Users, Target, BookOpen, Lightbulb, FileText, ClipboardCheck, GitMerge } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { incidents, type IncidentStatus } from "@/lib/mock-data";
+import {
+  AlarmClock,
+  ArrowUpRight,
+  Activity,
+  FileWarning,
+  Gauge,
+  ShieldCheck,
+  Timer,
+  TrendingDown,
+  Search,
+  X,
+  Users,
+  Target,
+  BookOpen,
+  Lightbulb,
+  FileText,
+  ClipboardCheck,
+  GitMerge,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { incidents, type Incident, type IncidentStatus } from "@/lib/mock-data";
+import { formatCountdown, useCountdown } from "@/lib/countdown";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Incident Dashboard — DORA Copilot" },
-      { name: "description", content: "Live view of ICT incidents, active regulatory deadlines, and classification workload." },
+      {
+        name: "description",
+        content:
+          "Live view of ICT incidents, active regulatory deadlines, and classification workload.",
+      },
     ],
   }),
   component: Dashboard,
 });
-
-function formatCountdown(ms: number) {
-  const sign = ms < 0 ? "-" : "";
-  const abs = Math.abs(ms);
-  const h = Math.floor(abs / 3_600_000);
-  const m = Math.floor((abs % 3_600_000) / 60_000);
-  const s = Math.floor((abs % 60_000) / 1000);
-  return `${sign}${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
 
 // Stable UTC formatter — avoids SSR/CSR locale mismatch
 function formatDetectedAt(iso: string) {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}, ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
-}
-
-function useCountdown(initialMs: number | undefined) {
-  const [ms, setMs] = useState(initialMs ?? 0);
-  useEffect(() => {
-    if (initialMs === undefined) return;
-    const t = setInterval(() => setMs((v) => v - 1000), 1000);
-    return () => clearInterval(t);
-  }, [initialMs]);
-  return ms;
 }
 
 const statusStyle: Record<IncidentStatus, string> = {
@@ -46,31 +58,44 @@ const statusStyle: Record<IncidentStatus, string> = {
   "Non-Major": "bg-success/15 text-success ring-success/30",
 };
 
+const RANGE_MS: Record<"24h" | "7d" | "30d", number> = {
+  "24h": 24 * 3_600_000,
+  "7d": 7 * 24 * 3_600_000,
+  "30d": 30 * 24 * 3_600_000,
+};
+
 function Dashboard() {
   const majorDeadline = incidents.find((i) => i.status === "Major - Reportable")?.deadlineMs;
   const clock = useCountdown(majorDeadline);
   const navigate = useNavigate();
   const [entityFilter, setEntityFilter] = useState<"all" | "neopay">("all");
-  const [rangeFilter, setRangeFilter] = useState<"7d" | "24h" | "30d">("7d");
+  const [rangeFilter, setRangeFilter] = useState<"7d" | "24h" | "30d">("30d");
   const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<Incident | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const now = Date.now();
     return incidents.filter((i) => {
       if (q && !`${i.id} ${i.title} ${i.owner}`.toLowerCase().includes(q)) return false;
+      if (entityFilter === "neopay" && i.entity !== "Neopay Bank AG") return false;
+      if (now - new Date(i.detectedAt).getTime() > RANGE_MS[rangeFilter]) return false;
       return true;
     });
-  }, [query]);
+  }, [query, entityFilter, rangeFilter]);
 
   return (
     <div>
       <div className="border-b border-border bg-[var(--surface-2)]/40 px-6 py-6">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground font-mono">Incident overview</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground font-mono">
+              Incident overview
+            </div>
             <h1 className="mt-1 text-2xl font-semibold">ICT Incident Command</h1>
             <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-              Live view of ongoing assessments, cross-regime notification deadlines, and pending reviewer sign-offs.
+              Live view of ongoing assessments, cross-regime notification deadlines, and pending
+              reviewer sign-offs.
             </p>
           </div>
           <Link
@@ -132,7 +157,12 @@ function Dashboard() {
 
         {/* Regime deadlines row */}
         <div className="grid md:grid-cols-3 gap-4">
-          <DeadlinePill regime="DORA" window="4h from classification" left="02h 14m" tone="danger" />
+          <DeadlinePill
+            regime="DORA"
+            window="4h from classification"
+            left="02h 14m"
+            tone="danger"
+          />
           <DeadlinePill regime="NIS2" window="24h early warning" left="18h 47m" tone="warning" />
           <DeadlinePill regime="GDPR" window="72h from detection" left="64h 12m" tone="muted" />
         </div>
@@ -142,7 +172,9 @@ function Dashboard() {
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div>
               <h2 className="text-sm font-semibold">Active incidents</h2>
-              <p className="text-xs text-muted-foreground">Sorted by regulatory urgency, then detection time.</p>
+              <p className="text-xs text-muted-foreground">
+                Sorted by regulatory urgency, then detection time.
+              </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5 rounded-md border border-border bg-[var(--surface-2)] px-2 py-1">
@@ -154,7 +186,10 @@ function Dashboard() {
                   className="w-40 bg-transparent text-xs placeholder:text-muted-foreground focus:outline-none"
                 />
                 {query && (
-                  <button onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground">
+                  <button
+                    onClick={() => setQuery("")}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     <X className="h-3 w-3" />
                   </button>
                 )}
@@ -167,9 +202,17 @@ function Dashboard() {
               <FilterChip
                 active
                 onClick={() =>
-                  setRangeFilter(rangeFilter === "24h" ? "7d" : rangeFilter === "7d" ? "30d" : "24h")
+                  setRangeFilter(
+                    rangeFilter === "24h" ? "7d" : rangeFilter === "7d" ? "30d" : "24h",
+                  )
                 }
-                label={rangeFilter === "24h" ? "Last 24 hours" : rangeFilter === "7d" ? "Last 7 days" : "Last 30 days"}
+                label={
+                  rangeFilter === "24h"
+                    ? "Last 24 hours"
+                    : rangeFilter === "7d"
+                      ? "Last 7 days"
+                      : "Last 30 days"
+                }
               />
             </div>
           </div>
@@ -189,32 +232,42 @@ function Dashboard() {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-5 py-8 text-center text-xs text-muted-foreground">
-                      No incidents match "{query}".
+                      {query
+                        ? `No incidents match "${query}".`
+                        : `No incidents in the ${rangeFilter === "24h" ? "last 24 hours" : rangeFilter === "7d" ? "last 7 days" : "last 30 days"}.`}
                     </td>
                   </tr>
                 )}
                 {filtered.map((inc) => (
                   <tr
                     key={inc.id}
-                    onClick={() => navigate({ to: "/assessment/new" })}
+                    onClick={() => setSelected(inc)}
                     className="hover:bg-accent/40 transition-colors cursor-pointer"
                   >
-                    <td className="px-5 py-3 font-mono text-[12px] text-muted-foreground">{inc.id}</td>
+                    <td className="px-5 py-3 font-mono text-[12px] text-muted-foreground">
+                      {inc.id}
+                    </td>
                     <td className="px-5 py-3">
                       <div className="font-medium">{inc.title}</div>
                       <div className="text-[11px] text-muted-foreground">{inc.entity}</div>
                     </td>
                     <td className="px-5 py-3">
-                      <span className={`inline-flex items-center gap-1 rounded-full ring-1 px-2 py-0.5 text-[11px] font-medium ${statusStyle[inc.status]}`}>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full ring-1 px-2 py-0.5 text-[11px] font-medium ${statusStyle[inc.status]}`}
+                      >
                         <span className="h-1.5 w-1.5 rounded-full bg-current" />
                         {inc.status}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-muted-foreground">{inc.owner}</td>
-                    <td className="px-5 py-3 text-muted-foreground text-xs font-mono">{formatDetectedAt(inc.detectedAt)}</td>
+                    <td className="px-5 py-3 text-muted-foreground text-xs font-mono">
+                      {formatDetectedAt(inc.detectedAt)}
+                    </td>
                     <td className="px-5 py-3 text-right">
                       {inc.status === "Major - Reportable" && inc.deadlineMs ? (
-                        <span className="font-mono text-danger tabular-nums">{formatCountdown(clock)}</span>
+                        <span className="font-mono text-danger tabular-nums">
+                          {formatCountdown(clock)}
+                        </span>
                       ) : inc.status === "Evaluating" ? (
                         <span className="font-mono text-warning">—</span>
                       ) : (
@@ -299,23 +352,44 @@ function Dashboard() {
           </div>
           <div className="grid md:grid-cols-2 gap-5">
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">The moment it all starts</h3>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">
+                The moment it all starts
+              </h3>
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                Somewhere in a bank's operations centre, a system goes down. A payment processor stalls, a data leak surfaces, or a critical service flickers — and nobody yet knows how serious it is. But one thing is already certain: a clock has started. If this turns out to be a major incident under DORA, the institution has four hours from the moment of classification to notify the regulator. In Germany, that is BaFin. Missing the window costs more than a fine — it costs trust with the supervisor.
+                Somewhere in a bank's operations centre, a system goes down. A payment processor
+                stalls, a data leak surfaces, or a critical service flickers — and nobody yet knows
+                how serious it is. But one thing is already certain: a clock has started. If this
+                turns out to be a major incident under DORA, the institution has four hours from the
+                moment of classification to notify the regulator. In Germany, that is BaFin. Missing
+                the window costs more than a fine — it costs trust with the supervisor.
               </p>
             </div>
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">The hard question</h3>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">
+                The hard question
+              </h3>
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                The honest answer is always: it depends. DORA blends arithmetic thresholds — customers affected, hours lost, financial impact — with judgment calls: public sensitivity, data criticality, and whether the service is truly material. At that moment, the second-line officer who was just thinking about a birthday gift must suddenly do spreadsheet math, reputational forecasting, and cross-regime mapping under a ticking clock, while NIS2, PSD2, and GDPR each demand their own notifications on their own timelines.
+                The honest answer is always: it depends. DORA blends arithmetic thresholds —
+                customers affected, hours lost, financial impact — with judgment calls: public
+                sensitivity, data criticality, and whether the service is truly material. At that
+                moment, the second-line officer who was just thinking about a birthday gift must
+                suddenly do spreadsheet math, reputational forecasting, and cross-regime mapping
+                under a ticking clock, while NIS2, PSD2, and GDPR each demand their own
+                notifications on their own timelines.
               </p>
             </div>
           </div>
           <div className="mt-5 grid md:grid-cols-2 gap-5">
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">What we do</h3>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">
+                What we do
+              </h3>
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                DORA Copilot is built to compress those hours of manual cross-referencing into minutes, without pretending the judgment calls are simpler than they are. We turn the scattered regulatory maze into a single, defensible workflow so the officer facing that clock can focus on answering one sneaky, simple question: "Is this a major incident — yes or no?"
+                DORA Copilot is built to compress those hours of manual cross-referencing into
+                minutes, without pretending the judgment calls are simpler than they are. We turn
+                the scattered regulatory maze into a single, defensible workflow so the officer
+                facing that clock can focus on answering one sneaky, simple question: "Is this a
+                major incident — yes or no?"
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 content-start">
@@ -327,6 +401,67 @@ function Dashboard() {
           </div>
         </section>
       </div>
+
+      <Dialog open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent>
+          {selected && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+                  {selected.id}
+                </div>
+                <DialogTitle>{selected.title}</DialogTitle>
+                <DialogDescription>{selected.entity}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full ring-1 px-2 py-0.5 text-[11px] font-medium ${statusStyle[selected.status]}`}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    {selected.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Owner</span>
+                  <span>{selected.owner}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Detected</span>
+                  <span className="font-mono text-xs">{formatDetectedAt(selected.detectedAt)}</span>
+                </div>
+                {selected.classifiedAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Classified</span>
+                    <span className="font-mono text-xs">
+                      {formatDetectedAt(selected.classifiedAt)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                {selected.status === "Non-Major" ? (
+                  <span className="text-xs text-muted-foreground self-center">
+                    Classified non-major — no further notification required.
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setSelected(null);
+                      navigate({ to: "/assessment/new" });
+                    }}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    Continue assessment
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -349,13 +484,17 @@ function MetricCard({
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="grid place-items-center h-6 w-6 rounded-md bg-accent text-foreground">{icon}</span>
+        <span className="grid place-items-center h-6 w-6 rounded-md bg-accent text-foreground">
+          {icon}
+        </span>
         {label}
       </div>
       <div className="mt-3 text-3xl font-semibold font-display tabular-nums">{value}</div>
       <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
       {trend && (
-        <div className={`mt-2 text-[11px] font-medium ${trendTone === "success" ? "text-success" : "text-muted-foreground"}`}>
+        <div
+          className={`mt-2 text-[11px] font-medium ${trendTone === "success" ? "text-success" : "text-muted-foreground"}`}
+        >
           {trend}
         </div>
       )}
@@ -363,7 +502,15 @@ function MetricCard({
   );
 }
 
-function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function FilterChip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
   return (
     <button
       onClick={onClick}
@@ -378,7 +525,17 @@ function FilterChip({ active, onClick, label }: { active: boolean; onClick: () =
   );
 }
 
-function DeadlinePill({ regime, window, left, tone }: { regime: string; window: string; left: string; tone: "danger" | "warning" | "muted" }) {
+function DeadlinePill({
+  regime,
+  window,
+  left,
+  tone,
+}: {
+  regime: string;
+  window: string;
+  left: string;
+  tone: "danger" | "warning" | "muted";
+}) {
   const toneMap = {
     danger: "border-danger/40 bg-danger/10 text-danger",
     warning: "border-warning/40 bg-warning/10 text-warning",
@@ -415,10 +572,14 @@ function QualityCard({
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className={`grid place-items-center h-6 w-6 rounded-md bg-accent ${accent}`}>{icon}</span>
+        <span className={`grid place-items-center h-6 w-6 rounded-md bg-accent ${accent}`}>
+          {icon}
+        </span>
         {title}
       </div>
-      <div className={`mt-3 text-2xl font-semibold font-display tabular-nums ${accent}`}>{value}</div>
+      <div className={`mt-3 text-2xl font-semibold font-display tabular-nums ${accent}`}>
+        {value}
+      </div>
       <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{body}</p>
     </div>
   );

@@ -32,9 +32,7 @@ export function TrustFooter() {
             </Link>
           </div>
         </div>
-        <div className="text-center md:text-right">
-          © 2026 [Legal Entity]. All rights reserved.
-        </div>
+        <div className="text-center md:text-right">© 2026 DORA Copilot. All rights reserved.</div>
       </div>
     </footer>
   );

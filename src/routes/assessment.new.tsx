@@ -26,12 +26,20 @@ import {
   overlapRegimes,
   sampleScenarios,
 } from "@/lib/mock-data";
+import { formatCountdown, useCountdownToDeadline } from "@/lib/countdown";
+
+// Same 4h DORA window shown on the dashboard for INC-2041 (2h14m remaining at classification time).
+const DORA_WINDOW_MS = 2 * 3_600_000 + 14 * 60_000;
 
 export const Route = createFileRoute("/assessment/new")({
   head: () => ({
     meta: [
       { title: "New Assessment — DORA Copilot" },
-      { name: "description", content: "AI-assisted DORA incident classification wizard: narrative → criteria → cross-regime map → draft notification." },
+      {
+        name: "description",
+        content:
+          "AI-assisted DORA incident classification wizard: narrative → criteria → cross-regime map → draft notification.",
+      },
     ],
   }),
   component: NewAssessment,
@@ -84,6 +92,7 @@ function NewAssessment() {
   const [stageIdx, setStageIdx] = useState(0);
   const [strategy, setStrategy] = useState<"strict" | "comparative">("strict");
   const [clockStarted, setClockStarted] = useState(false);
+  const [clockDeadline, setClockDeadline] = useState<number | null>(null);
   const [resumedAt, setResumedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -191,7 +200,10 @@ function NewAssessment() {
     setTimeout(tick, 650);
   };
 
-  const wordCount = useMemo(() => narrative.trim().split(/\s+/).filter(Boolean).length, [narrative]);
+  const wordCount = useMemo(
+    () => narrative.trim().split(/\s+/).filter(Boolean).length,
+    [narrative],
+  );
 
   return (
     <div>
@@ -203,13 +215,15 @@ function NewAssessment() {
           <div>
             <h1 className="text-2xl font-semibold">New Incident Assessment</h1>
             <p className="text-sm text-muted-foreground max-w-2xl">
-              Turn a messy, unstructured incident narrative into a defensible, criterion-by-criterion DORA
-              classification and a regulator-ready draft notification.
+              Turn a messy, unstructured incident narrative into a defensible,
+              criterion-by-criterion DORA classification and a regulator-ready draft notification.
             </p>
           </div>
           <div className="flex items-start gap-3">
             <div className="text-right">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Reference</div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Reference
+              </div>
               <div className="font-mono text-sm">INC-2042</div>
             </div>
             <AutosaveIndicator status={autoStatus} lastSavedAt={lastSavedAt} />
@@ -219,7 +233,11 @@ function NewAssessment() {
               aria-busy={saving}
               className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium hover:border-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
               {saving ? "Saving…" : "Save draft"}
             </button>
           </div>
@@ -261,8 +279,8 @@ function NewAssessment() {
                     active
                       ? "bg-primary/15 ring-1 ring-primary/40 text-foreground"
                       : done
-                      ? "bg-success/10 ring-1 ring-success/30 text-foreground"
-                      : "bg-[var(--surface-2)] text-muted-foreground"
+                        ? "bg-success/10 ring-1 ring-success/30 text-foreground"
+                        : "bg-[var(--surface-2)] text-muted-foreground"
                   }`}
                 >
                   <span
@@ -270,8 +288,8 @@ function NewAssessment() {
                       active
                         ? "bg-primary text-primary-foreground"
                         : done
-                        ? "bg-success text-success-foreground"
-                        : "bg-accent text-muted-foreground"
+                          ? "bg-success text-success-foreground"
+                          : "bg-accent text-muted-foreground"
                     }`}
                   >
                     {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : s.id}
@@ -281,7 +299,9 @@ function NewAssessment() {
                     <div className="text-[10px] text-muted-foreground">{s.hint}</div>
                   </div>
                 </button>
-                {idx < steps.length - 1 && <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                {idx < steps.length - 1 && (
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
               </li>
             );
           })}
@@ -308,9 +328,16 @@ function NewAssessment() {
           />
         )}
         {step === 3 && (
-          <StepThree goNext={() => setStep(4)} clockStarted={clockStarted} setClockStarted={setClockStarted} />
+          <StepThree
+            goNext={() => setStep(4)}
+            clockStarted={clockStarted}
+            onArm={() => {
+              setClockStarted(true);
+              setClockDeadline(Date.now() + DORA_WINDOW_MS);
+            }}
+          />
         )}
-        {step === 4 && <StepFour clockStarted={clockStarted} />}
+        {step === 4 && <StepFour clockStarted={clockStarted} clockDeadline={clockDeadline} />}
       </div>
     </div>
   );
@@ -410,7 +437,11 @@ function StepOne({
             onClick={runAnalysis}
             className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90"
           >
-            {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {analyzing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
             {analyzing ? "Analyzing…" : "Analyze narrative"}
           </button>
         </div>
@@ -430,7 +461,9 @@ function StepOne({
                   ) : (
                     <span className="h-3.5 w-3.5 rounded-full border border-border shrink-0" />
                   )}
-                  <span className={pending ? "text-muted-foreground" : "text-foreground"}>{stage}</span>
+                  <span className={pending ? "text-muted-foreground" : "text-foreground"}>
+                    {stage}
+                  </span>
                 </div>
               );
             })}
@@ -452,7 +485,9 @@ function StepOne({
                 className="w-full text-left rounded-md border border-border bg-[var(--surface-2)] p-3 text-sm hover:border-primary/40 transition-colors"
               >
                 <div className="font-medium">{s.label}</div>
-                <div className="mt-1 text-[11px] text-muted-foreground line-clamp-2">{s.narrative}</div>
+                <div className="mt-1 text-[11px] text-muted-foreground line-clamp-2">
+                  {s.narrative}
+                </div>
               </button>
             ))}
           </div>
@@ -463,10 +498,22 @@ function StepOne({
             What happens next
           </div>
           <ol className="mt-3 space-y-2 text-xs text-muted-foreground">
-            <li className="flex gap-2"><span className="text-primary font-mono">→</span> Criterion-by-criterion RTS evaluation</li>
-            <li className="flex gap-2"><span className="text-primary font-mono">→</span> Timelines mapped across DORA/NIS2/GDPR/PSD2</li>
-            <li className="flex gap-2"><span className="text-primary font-mono">→</span> Draft notification composed against BaFin template</li>
-            <li className="flex gap-2"><span className="text-primary font-mono">→</span> Full auditor trail preserved for reviewer sign-off</li>
+            <li className="flex gap-2">
+              <span className="text-primary font-mono">→</span> Criterion-by-criterion RTS
+              evaluation
+            </li>
+            <li className="flex gap-2">
+              <span className="text-primary font-mono">→</span> Timelines mapped across
+              DORA/NIS2/GDPR/PSD2
+            </li>
+            <li className="flex gap-2">
+              <span className="text-primary font-mono">→</span> Draft notification composed against
+              BaFin template
+            </li>
+            <li className="flex gap-2">
+              <span className="text-primary font-mono">→</span> Full auditor trail preserved for
+              reviewer sign-off
+            </li>
           </ol>
         </div>
       </aside>
@@ -496,7 +543,7 @@ function StepTwo({
           <span className="text-[11px] text-muted-foreground font-mono">Read-only</span>
         </div>
         <pre className="flex-1 overflow-auto whitespace-pre-wrap px-5 py-4 text-[12.5px] leading-relaxed font-mono text-muted-foreground">
-{narrative || "(no narrative)"}
+          {narrative || "(no narrative)"}
         </pre>
       </div>
 
@@ -528,18 +575,25 @@ function StepTwo({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-medium">{c.title}</div>
-                    <div className="text-[11px] font-mono text-muted-foreground mt-0.5">{c.citation}</div>
+                    <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                      {c.citation}
+                    </div>
                   </div>
                   <ConfidenceBadge value={c.confidence} />
                 </div>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium">{c.rating}</span>
+                  <span className="rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium">
+                    {c.rating}
+                  </span>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{c.reasoning}</p>
                 {strategy === "comparative" && (
                   <div className="mt-2 rounded-md border border-dashed border-border bg-[var(--surface-2)] p-2 text-[11px] text-muted-foreground">
-                    <span className="font-mono text-warning">alt-prompt:</span> Conservative reviewer rating —{" "}
-                    {c.confidence > 80 ? "unchanged" : "downgrade by one band pending human confirmation."}
+                    <span className="font-mono text-warning">alt-prompt:</span> Conservative
+                    reviewer rating —{" "}
+                    {c.confidence > 80
+                      ? "unchanged"
+                      : "downgrade by one band pending human confirmation."}
                   </div>
                 )}
               </div>
@@ -557,8 +611,8 @@ function StepTwo({
             </span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            5 of 7 RTS criteria meet or exceed the qualifying threshold. Reviewer sign-off required before the
-            legal clock starts.
+            5 of 7 RTS criteria meet or exceed the qualifying threshold. Reviewer sign-off required
+            before the legal clock starts.
           </p>
         </div>
 
@@ -568,7 +622,9 @@ function StepTwo({
               <ShieldAlert className="h-4 w-4 text-muted-foreground" />
               Auditor trail
             </span>
-            <span className="text-[11px] text-muted-foreground font-mono">{auditTrail.length} events</span>
+            <span className="text-[11px] text-muted-foreground font-mono">
+              {auditTrail.length} events
+            </span>
           </summary>
           <div className="px-5 pb-4 space-y-1.5">
             {auditTrail.map((a) => (
@@ -602,7 +658,9 @@ function ConfidenceBadge({ value }: { value: number }) {
     danger: "bg-danger/15 text-danger ring-danger/30",
   }[tone];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full ring-1 px-2 py-0.5 text-[10.5px] font-medium font-mono ${cls}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full ring-1 px-2 py-0.5 text-[10.5px] font-medium font-mono ${cls}`}
+    >
       conf {value}%
     </span>
   );
@@ -611,11 +669,11 @@ function ConfidenceBadge({ value }: { value: number }) {
 function StepThree({
   goNext,
   clockStarted,
-  setClockStarted,
+  onArm,
 }: {
   goNext: () => void;
   clockStarted: boolean;
-  setClockStarted: (b: boolean) => void;
+  onArm: () => void;
 }) {
   const [arming, setArming] = useState(false);
   const confirmClassification = () => {
@@ -624,7 +682,7 @@ function StepThree({
     toast.loading("Recording reviewer confirmation…", { id: "arm-clock" });
     setTimeout(() => {
       setArming(false);
-      setClockStarted(true);
+      onArm();
       toast.success("Legal clock armed — DORA 4h window active", {
         id: "arm-clock",
         description: "BaFin notification due by 14:45 CET.",
@@ -645,7 +703,10 @@ function StepThree({
         </div>
         <div className="divide-y divide-border">
           {overlapRegimes.map((r) => (
-            <div key={r.key} className="grid md:grid-cols-[24px_1fr_180px_220px] gap-3 items-start px-5 py-4">
+            <div
+              key={r.key}
+              className="grid md:grid-cols-[24px_1fr_180px_220px] gap-3 items-start px-5 py-4"
+            >
               <div className="pt-1">
                 <span
                   className={`inline-block h-4 w-4 rounded-sm border ${
@@ -659,7 +720,9 @@ function StepThree({
                 <div className="text-xs text-muted-foreground mt-1.5">{r.note}</div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Deadline</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Deadline
+                </div>
                 <div className="text-sm font-mono">{r.deadline}</div>
               </div>
               <div>
@@ -679,12 +742,16 @@ function StepThree({
         </div>
       </div>
 
-      <div className={`rounded-xl border p-5 ${clockStarted ? "border-danger/40 bg-danger/10" : "border-warning/40 bg-warning/10"}`}>
+      <div
+        className={`rounded-xl border p-5 ${clockStarted ? "border-danger/40 bg-danger/10" : "border-warning/40 bg-warning/10"}`}
+      >
         <div className="flex items-start gap-4 flex-wrap">
           <div className="flex-1 min-w-[260px]">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <AlarmClockIcon started={clockStarted} />
-              {clockStarted ? "Legal clock started — 4h DORA window active" : "Confirm classification to start the legal clock"}
+              {clockStarted
+                ? "Legal clock started — 4h DORA window active"
+                : "Confirm classification to start the legal clock"}
             </div>
             <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
               {clockStarted
@@ -700,7 +767,11 @@ function StepThree({
                 aria-busy={arming}
                 className="inline-flex items-center gap-2 rounded-md bg-danger px-4 py-2 text-sm font-medium text-danger-foreground hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {arming ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
+                {arming ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldAlert className="h-4 w-4" />
+                )}
                 {arming ? "Arming legal clock…" : "Confirm major incident classification"}
               </button>
             ) : (
@@ -731,11 +802,18 @@ function AlarmClockIcon({ started }: { started: boolean }) {
   );
 }
 
-function StepFour({ clockStarted }: { clockStarted: boolean }) {
+function StepFour({
+  clockStarted,
+  clockDeadline,
+}: {
+  clockStarted: boolean;
+  clockDeadline: number | null;
+}) {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
+  const remainingMs = useCountdownToDeadline(clockDeadline);
 
   const copy = async () => {
     if (copying) return;
@@ -822,23 +900,35 @@ function StepFour({ clockStarted }: { clockStarted: boolean }) {
             </button>
           </div>
         </div>
-        <pre className="whitespace-pre-wrap px-5 py-4 text-[12.5px] leading-relaxed font-mono">{draftNotification}</pre>
+        <pre className="whitespace-pre-wrap px-5 py-4 text-[12.5px] leading-relaxed font-mono">
+          {draftNotification}
+        </pre>
       </div>
 
       <aside className="space-y-4">
-        <div className={`rounded-xl border p-4 ${clockStarted ? "border-danger/40 bg-danger/10" : "border-border bg-card"}`}>
-          <div className={`text-xs font-medium ${clockStarted ? "text-danger" : "text-muted-foreground"}`}>
+        <div
+          className={`rounded-xl border p-4 ${clockStarted ? "border-danger/40 bg-danger/10" : "border-border bg-card"}`}
+        >
+          <div
+            className={`text-xs font-medium ${clockStarted ? "text-danger" : "text-muted-foreground"}`}
+          >
             {clockStarted ? "DORA 4h window" : "Clock not started"}
           </div>
-          <div className={`mt-2 font-mono text-2xl tabular-nums ${clockStarted ? "text-danger" : "text-foreground"}`}>
-            {clockStarted ? "03:41:22" : "—:—:—"}
+          <div
+            className={`mt-2 font-mono text-2xl tabular-nums ${clockStarted ? "text-danger" : "text-foreground"}`}
+          >
+            {clockStarted && clockDeadline ? formatCountdown(remainingMs) : "—:—:—"}
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
-            {clockStarted ? "Submit before 14:45 CET" : "Confirm classification in Step 3 to arm the timer."}
+            {clockStarted
+              ? "Submit before 14:45 CET"
+              : "Confirm classification in Step 3 to arm the timer."}
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider">Parallel filings</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">
+            Parallel filings
+          </div>
           <ul className="mt-3 space-y-2 text-xs">
             <li className="flex items-center justify-between">
               <span>NIS2 early warning · BSI</span>
@@ -855,9 +945,13 @@ function StepFour({ clockStarted }: { clockStarted: boolean }) {
           </ul>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider">Reviewer sign-off</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">
+            Reviewer sign-off
+          </div>
           <div className="mt-3 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-primary/25 grid place-items-center text-xs font-semibold text-primary">SI</div>
+            <div className="h-9 w-9 rounded-full bg-primary/25 grid place-items-center text-xs font-semibold text-primary">
+              SI
+            </div>
             <div className="text-xs leading-tight">
               <div className="font-medium">S. Ivanova</div>
               <div className="text-muted-foreground">Head of ICT Risk (2nd line)</div>
