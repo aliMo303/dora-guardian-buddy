@@ -432,3 +432,32 @@ function AboutPill({ icon, label }: { icon: React.ReactNode; label: string }) {
     </div>
   );
 }
+
+function StepCard({
+  number,
+  icon,
+  title,
+  body,
+}: {
+  number: string;
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-[var(--surface-2)]/50 p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex flex-col items-center gap-2">
+          <span className="grid place-items-center h-8 w-8 rounded-md bg-accent text-foreground shrink-0">
+            {icon}
+          </span>
+          <span className="text-[10px] font-mono text-muted-foreground">{number}</span>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
