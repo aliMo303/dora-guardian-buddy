@@ -263,23 +263,31 @@ function Dashboard() {
           </div>
           <div className="grid md:grid-cols-2 gap-5">
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">Mission</h3>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">The moment it all starts</h3>
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                DORA Copilot is built by ICT risk and compliance teams to turn regulatory complexity into fast, defensible incident decisions. We combine DORA, NIS2 and GDPR deadlines into a single command centre so teams respond instead of chasing paperwork.
+                Somewhere in a bank's operations centre, a system goes down. A payment processor stalls, a data leak surfaces, or a critical service flickers — and nobody yet knows how serious it is. But one thing is already certain: a clock has started. If this turns out to be a major incident under DORA, the institution has four hours from the moment of classification to notify the regulator. In Germany, that is BaFin. Missing the window costs more than a fine — it costs trust with the supervisor.
               </p>
             </div>
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">Who we are</h3>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">The hard question</h3>
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                Neopay Bank AG's GRC function, led by ICT Risk Officers and supported by the second line of defence. We validate every classification against the EBA DORA RTS and the institution's risk appetite before submission.
+                The honest answer is always: it depends. DORA blends arithmetic thresholds — customers affected, hours lost, financial impact — with judgment calls: public sensitivity, data criticality, and whether the service is truly material. At that moment, the second-line officer who was just thinking about a birthday gift must suddenly do spreadsheet math, reputational forecasting, and cross-regime mapping under a ticking clock, while NIS2, PSD2, and GDPR each demand their own notifications on their own timelines.
               </p>
             </div>
           </div>
-          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <AboutPill icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Risk-led" />
-            <AboutPill icon={<Target className="h-3.5 w-3.5" />} label="Deadline-driven" />
-            <AboutPill icon={<Users className="h-3.5 w-3.5" />} label="Team-first" />
-            <AboutPill icon={<BookOpen className="h-3.5 w-3.5" />} label="Evidence-based" />
+          <div className="mt-5 grid md:grid-cols-2 gap-5">
+            <div>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-mono">What we do</h3>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                DORA Copilot is built to compress those hours of manual cross-referencing into minutes, without pretending the judgment calls are simpler than they are. We turn the scattered regulatory maze into a single, defensible workflow so the officer facing that clock can focus on answering one sneaky, simple question: "Is this a major incident — yes or no?"
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 content-start">
+              <AboutPill icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Risk-led" />
+              <AboutPill icon={<Target className="h-3.5 w-3.5" />} label="Deadline-driven" />
+              <AboutPill icon={<Users className="h-3.5 w-3.5" />} label="Team-first" />
+              <AboutPill icon={<BookOpen className="h-3.5 w-3.5" />} label="Evidence-based" />
+            </div>
           </div>
         </section>
       </div>
