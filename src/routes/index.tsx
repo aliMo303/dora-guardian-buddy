@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlarmClock, ArrowUpRight, Activity, FileWarning, Gauge, ShieldCheck, Timer, TrendingDown, Search, X, Users, Target, BookOpen } from "lucide-react";
+import { AlarmClock, ArrowUpRight, Activity, FileWarning, Gauge, ShieldCheck, Timer, TrendingDown, Search, X, Users, Target, BookOpen, Lightbulb, FileText, ClipboardCheck, GitMerge } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { incidents, type IncidentStatus } from "@/lib/mock-data";
 
