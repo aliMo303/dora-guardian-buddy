@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlarmClock, ArrowUpRight, Activity, FileWarning, Gauge, ShieldCheck, Timer, TrendingDown, Search, X, Users, Target, BookOpen } from "lucide-react";
+import { AlarmClock, ArrowUpRight, Activity, FileWarning, Gauge, ShieldCheck, Timer, TrendingDown, Search, X, Users, Target, BookOpen, Lightbulb, FileText, ClipboardCheck, GitMerge } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { incidents, type IncidentStatus } from "@/lib/mock-data";
 
@@ -253,6 +253,42 @@ function Dashboard() {
           />
         </div>
 
+        {/* How it works */}
+        <section className="rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-5">
+            <span className="grid place-items-center h-6 w-6 rounded-md bg-accent text-foreground">
+              <Lightbulb className="h-4 w-4" />
+            </span>
+            <h2 className="text-sm font-semibold">How it works</h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <StepCard
+              number="01"
+              icon={<FileText className="h-4 w-4" />}
+              title="Capture the narrative"
+              body="Describe what happened in plain language — system, impact, and timing. The copilot keeps the original story attached as the audit backbone."
+            />
+            <StepCard
+              number="02"
+              icon={<Gauge className="h-4 w-4" />}
+              title="Classify under DORA"
+              body="AI evaluates each RTS Art. 18 criterion: materiality, service criticality, data sensitivity, duration, and financial impact. Confidence scores and citations are shown side by side."
+            />
+            <StepCard
+              number="03"
+              icon={<GitMerge className="h-4 w-4" />}
+              title="Check cross-regime overlap"
+              body="Parallel checks for NIS2, GDPR, and PSD2 obligations surface additional notifications, deadlines, and authorities without duplicating work."
+            />
+            <StepCard
+              number="04"
+              icon={<ClipboardCheck className="h-4 w-4" />}
+              title="Generate the draft notification"
+              body="A structured, regulator-ready notification is produced with a full reasoning trail. Save, copy, export, or escalate to the reviewer for sign-off."
+            />
+          </div>
+        </section>
+
         {/* About us section */}
         <section className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center gap-2 mb-4">
@@ -393,6 +429,35 @@ function AboutPill({ icon, label }: { icon: React.ReactNode; label: string }) {
     <div className="flex items-center gap-2 rounded-md border border-border bg-[var(--surface-2)] px-3 py-2 text-xs text-muted-foreground">
       <span className="text-foreground">{icon}</span>
       {label}
+    </div>
+  );
+}
+
+function StepCard({
+  number,
+  icon,
+  title,
+  body,
+}: {
+  number: string;
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-[var(--surface-2)]/50 p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex flex-col items-center gap-2">
+          <span className="grid place-items-center h-8 w-8 rounded-md bg-accent text-foreground shrink-0">
+            {icon}
+          </span>
+          <span className="text-[10px] font-mono text-muted-foreground">{number}</span>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{body}</p>
+        </div>
+      </div>
     </div>
   );
 }
