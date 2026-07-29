@@ -37,6 +37,18 @@ jobs:
           GH_PAGES_BASE: /dora-guardian-buddy/
         run: bun run build
 
+      - name: Debug build output
+        # Temporary diagnostic: dumps the post-build file tree to this run's
+        # public Summary tab (visible without signing in), since the exact
+        # output layout has been a moving target across a couple of attempts.
+        run: |
+          {
+            echo "### Build output tree (depth 6, excluding node_modules/.git)"
+            echo '```'
+            find . -maxdepth 6 -not -path "./node_modules*" -not -path "./.git*" | sort
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Locate build output
         # TanStack Start's SPA mode (spa.enabled, on by default) prerenders a
         # generic app shell to a "_shell" file instead of a literal root
