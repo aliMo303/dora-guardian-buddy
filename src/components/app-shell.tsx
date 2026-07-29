@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, FilePlus2, GitCompareArrows, BookOpen, ShieldAlert, Bell, Search } from "lucide-react";
+import { LayoutDashboard, FilePlus2, GitCompareArrows, BookOpen, ShieldAlert, Bell, Search, Users } from "lucide-react";
 import { TrustFooter } from "@/components/trust-footer";
 import type { ReactNode } from "react";
 
@@ -8,6 +8,7 @@ const navItems = [
   { to: "/assessment/new", label: "New Assessment", icon: FilePlus2 },
   { to: "/regulatory-mapping", label: "Regulatory Mapping", icon: GitCompareArrows },
   { to: "/framework-explorer", label: "Framework Explorer", icon: BookOpen },
+  { to: "/about", label: "About Us", icon: Users },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
