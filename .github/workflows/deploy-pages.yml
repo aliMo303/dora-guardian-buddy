@@ -37,12 +37,35 @@ jobs:
           GH_PAGES_BASE: /dora-guardian-buddy/
         run: bun run build
 
+      - name: Locate build output
+        # The exact output directory depends on the Nitro/Vite preset in use
+        # (.output/public, dist/client, dist, ...), so discover it instead of
+        # hardcoding a guess. Fails loudly with a directory listing if none
+        # of the known candidates contain an index.html.
+        id: locate
+        run: |
+          set -e
+          candidate=""
+          for dir in ".output/public" "dist/client" "dist" ".vercel/output/static" "build/client" "build"; do
+            if [ -f "$dir/index.html" ]; then
+              candidate="$dir"
+              break
+            fi
+          done
+          if [ -z "$candidate" ]; then
+            echo "::error::Could not locate build output containing index.html. Directory tree (depth 3):"
+            find . -maxdepth 3 -not -path "./node_modules*" -not -path "./.git*" | sort
+            exit 1
+          fi
+          echo "Found build output at $candidate"
+          echo "dir=$candidate" >> "$GITHUB_OUTPUT"
+
       - name: Add SPA fallback for client-side routing
         # GitHub Pages has no server-side rewrites, so direct navigation to a
         # nested route (e.g. /assessment/new) 404s unless we serve the same
         # app shell for unmatched paths. TanStack Router then takes over
         # client-side and renders the right page.
-        run: cp .output/public/index.html .output/public/404.html
+        run: cp "${{ steps.locate.outputs.dir }}/index.html" "${{ steps.locate.outputs.dir }}/404.html"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -50,7 +73,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./.output/public
+          path: ${{ steps.locate.outputs.dir }}
 
   deploy:
     environment:
