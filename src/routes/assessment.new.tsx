@@ -25,8 +25,19 @@ import {
   draftNotification,
   overlapRegimes,
   sampleScenarios,
+  type SampleScenario,
 } from "@/lib/mock-data";
 import { formatCountdown, useCountdownToDeadline } from "@/lib/countdown";
+import {
+  buildCriteriaBreakdown,
+  buildDraftNotification,
+  buildOverlapRegimes,
+  evaluate,
+  type DoraFacts,
+  type EvaluationResult,
+  type CriterionRow,
+  type OverlapRegime,
+} from "@/lib/dora-rules";
 
 // Same 4h DORA window shown on the dashboard for INC-2041 (2h14m remaining at classification time).
 const DORA_WINDOW_MS = 2 * 3_600_000 + 14 * 60_000;
@@ -87,6 +98,10 @@ const loadingStages = [
 function NewAssessment() {
   const [step, setStep] = useState<Step>(1);
   const [narrative, setNarrative] = useState("");
+  // Set when a sample scenario is loaded; cleared on manual edits since the
+  // structured facts no longer correspond to the (now-modified) text. Lets
+  // Step 2 onward run the real RTS rules engine instead of a static mock.
+  const [selectedFacts, setSelectedFacts] = useState<DoraFacts | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
   const [stageIdx, setStageIdx] = useState(0);
@@ -170,6 +185,7 @@ function NewAssessment() {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current);
     setNarrative("");
+    setSelectedFacts(null);
     setStep(1);
     setAnalyzed(false);
     setStrategy("strict");
@@ -204,6 +220,36 @@ function NewAssessment() {
     () => narrative.trim().split(/\s+/).filter(Boolean).length,
     [narrative],
   );
+
+  // Real classification when a sample scenario's facts are loaded; null for
+  // freeform-typed narratives (no structured facts to evaluate against —
+  // that would need an actual extraction model, out of scope for this demo).
+  const liveEval: EvaluationResult | null = useMemo(
+    () => (selectedFacts ? evaluate(selectedFacts) : null),
+    [selectedFacts],
+  );
+  const liveCriteria: CriterionRow[] | null = useMemo(
+    () => (selectedFacts && liveEval ? buildCriteriaBreakdown(selectedFacts, liveEval) : null),
+    [selectedFacts, liveEval],
+  );
+  const liveRegimes: OverlapRegime[] | null = useMemo(
+    () => (selectedFacts && liveEval ? buildOverlapRegimes(selectedFacts, liveEval) : null),
+    [selectedFacts, liveEval],
+  );
+  const liveDraft: string | null = useMemo(
+    () => (selectedFacts && liveEval ? buildDraftNotification(selectedFacts, liveEval, "INC-2042") : null),
+    [selectedFacts, liveEval],
+  );
+
+  const handleNarrativeChange = (text: string) => {
+    setNarrative(text);
+    setSelectedFacts(null);
+  };
+
+  const handleLoadSample = (s: SampleScenario) => {
+    setNarrative(s.narrative);
+    setSelectedFacts(s.facts);
+  };
 
   return (
     <div>
@@ -312,7 +358,8 @@ function NewAssessment() {
         {step === 1 && (
           <StepOne
             narrative={narrative}
-            setNarrative={setNarrative}
+            setNarrative={handleNarrativeChange}
+            onLoadSample={handleLoadSample}
             analyzing={analyzing}
             stageIdx={stageIdx}
             runAnalysis={runAnalysis}
@@ -325,6 +372,9 @@ function NewAssessment() {
             strategy={strategy}
             setStrategy={setStrategy}
             goNext={() => setStep(3)}
+            liveEval={liveEval}
+            liveCriteria={liveCriteria}
+            scenarioLabel={selectedFacts?.entity ?? null}
           />
         )}
         {step === 3 && (
@@ -335,9 +385,19 @@ function NewAssessment() {
               setClockStarted(true);
               setClockDeadline(Date.now() + DORA_WINDOW_MS);
             }}
+            liveRegimes={liveRegimes}
+            major={liveEval ? liveEval.major : true}
           />
         )}
-        {step === 4 && <StepFour clockStarted={clockStarted} clockDeadline={clockDeadline} />}
+        {step === 4 && (
+          <StepFour
+            clockStarted={clockStarted}
+            clockDeadline={clockDeadline}
+            liveDraft={liveDraft}
+            liveRegimes={liveRegimes}
+            major={liveEval ? liveEval.major : true}
+          />
+        )}
       </div>
     </div>
   );
@@ -399,6 +459,7 @@ function AutosaveIndicator({
 function StepOne({
   narrative,
   setNarrative,
+  onLoadSample,
   analyzing,
   stageIdx,
   runAnalysis,
@@ -406,6 +467,7 @@ function StepOne({
 }: {
   narrative: string;
   setNarrative: (s: string) => void;
+  onLoadSample: (s: SampleScenario) => void;
   analyzing: boolean;
   stageIdx: number;
   runAnalysis: () => void;
@@ -477,14 +539,28 @@ function StepOne({
             <Play className="h-3.5 w-3.5" />
             Load sample scenario
           </div>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-2 max-h-[520px] overflow-y-auto pr-0.5">
             {sampleScenarios.map((s) => (
               <button
                 key={s.id}
-                onClick={() => setNarrative(s.narrative)}
+                onClick={() => onLoadSample(s)}
                 className="w-full text-left rounded-md border border-border bg-[var(--surface-2)] p-3 text-sm hover:border-primary/40 transition-colors"
               >
-                <div className="font-medium">{s.label}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-medium">{s.label}</div>
+                  <span
+                    className={`shrink-0 rounded-full ring-1 px-1.5 py-0.5 text-[10px] font-medium ${
+                      s.classification === "major"
+                        ? "bg-danger/15 text-danger ring-danger/30"
+                        : "bg-success/15 text-success ring-success/30"
+                    }`}
+                  >
+                    {s.classification === "major" ? "Major" : "Not major"}
+                  </span>
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground">
+                  {s.entity} · {s.sector}
+                </div>
                 <div className="mt-1 text-[11px] text-muted-foreground line-clamp-2">
                   {s.narrative}
                 </div>
@@ -526,12 +602,25 @@ function StepTwo({
   strategy,
   setStrategy,
   goNext,
+  liveEval,
+  liveCriteria,
+  scenarioLabel,
 }: {
   narrative: string;
   strategy: "strict" | "comparative";
   setStrategy: (s: "strict" | "comparative") => void;
   goNext: () => void;
+  liveEval: EvaluationResult | null;
+  liveCriteria: CriterionRow[] | null;
+  scenarioLabel: string | null;
 }) {
+  const isLive = liveEval !== null && liveCriteria !== null;
+  const rows = liveCriteria ?? classificationCriteria;
+  const major = liveEval ? liveEval.major : true;
+  const metCount = liveEval ? liveEval.metCount : 5;
+  const totalCriteria = liveEval ? 6 : 7;
+  const reason = liveEval ? liveEval.reason : null;
+
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <div className="rounded-xl border border-border bg-card overflow-hidden flex flex-col">
@@ -569,8 +658,19 @@ function StepTwo({
               </button>
             </div>
           </div>
+          <div className="px-5 py-2 border-b border-border bg-[var(--surface-2)]/60 text-[11px]">
+            {isLive ? (
+              <span className="text-success">
+                Live classification — {scenarioLabel} (RTS 2024/1772 rules engine)
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                Reference example — load a sample scenario to see the rules engine classify it live
+              </span>
+            )}
+          </div>
           <div className="divide-y divide-border max-h-[520px] overflow-auto">
-            {classificationCriteria.map((c) => (
+            {rows.map((c) => (
               <div key={c.key} className="px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -601,18 +701,28 @@ function StepTwo({
           </div>
         </div>
 
-        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-primary">
+        <div
+          className={`rounded-xl border p-4 ${major ? "border-primary/30 bg-primary/5" : "border-success/30 bg-success/5"}`}
+        >
+          <div
+            className={`flex items-center gap-2 text-xs font-medium ${major ? "text-primary" : "text-success"}`}
+          >
             <Gavel className="h-3.5 w-3.5" /> Preliminary determination
           </div>
           <div className="mt-2 flex items-center gap-3">
-            <span className="rounded-md bg-danger/15 text-danger ring-1 ring-danger/40 px-2 py-1 text-xs font-semibold">
-              MAJOR INCIDENT — reportable under DORA Art. 19
+            <span
+              className={`rounded-md px-2 py-1 text-xs font-semibold ring-1 ${
+                major
+                  ? "bg-danger/15 text-danger ring-danger/40"
+                  : "bg-success/15 text-success ring-success/40"
+              }`}
+            >
+              {major ? "MAJOR INCIDENT — reportable under DORA Art. 19" : "NOT MAJOR — no DORA notification required"}
             </span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            5 of 7 RTS criteria meet or exceed the qualifying threshold. Reviewer sign-off required
-            before the legal clock starts.
+            {reason ??
+              `${metCount} of ${totalCriteria} RTS criteria meet or exceed the qualifying threshold. Reviewer sign-off required before the legal clock starts.`}
           </p>
         </div>
 
@@ -670,11 +780,16 @@ function StepThree({
   goNext,
   clockStarted,
   onArm,
+  liveRegimes,
+  major,
 }: {
   goNext: () => void;
   clockStarted: boolean;
   onArm: () => void;
+  liveRegimes: OverlapRegime[] | null;
+  major: boolean;
 }) {
+  const regimes = liveRegimes ?? overlapRegimes;
   const [arming, setArming] = useState(false);
   const confirmClassification = () => {
     if (arming || clockStarted) return;
@@ -702,7 +817,7 @@ function StepThree({
           </span>
         </div>
         <div className="divide-y divide-border">
-          {overlapRegimes.map((r) => (
+          {regimes.map((r) => (
             <div
               key={r.key}
               className="grid md:grid-cols-[24px_1fr_180px_220px] gap-3 items-start px-5 py-4"
@@ -742,50 +857,75 @@ function StepThree({
         </div>
       </div>
 
-      <div
-        className={`rounded-xl border p-5 ${clockStarted ? "border-danger/40 bg-danger/10" : "border-warning/40 bg-warning/10"}`}
-      >
-        <div className="flex items-start gap-4 flex-wrap">
-          <div className="flex-1 min-w-[260px]">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <AlarmClockIcon started={clockStarted} />
-              {clockStarted
-                ? "Legal clock started — 4h DORA window active"
-                : "Confirm classification to start the legal clock"}
+      {!major ? (
+        <div className="rounded-xl border border-success/40 bg-success/10 p-5">
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="flex-1 min-w-[260px]">
+              <div className="flex items-center gap-2 text-sm font-semibold text-success">
+                <CheckCircle2 className="h-4 w-4" />
+                Classified not major — no DORA legal clock applies
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
+                No RTS threshold combination meeting Art. 8 was reached. No DORA initial
+                notification is required; continue to record the classification for the audit
+                trail.
+              </p>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
-              {clockStarted
-                ? "Notification to BaFin must be submitted by 14:45 CET. NIS2 early warning and GDPR breach assessment are running in parallel."
-                : "Once you confirm the major-incident classification, the DORA Article 19(4)(a) 4-hour countdown starts. Reviewer approval is recorded in the auditor trail."}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {!clockStarted ? (
-              <button
-                onClick={confirmClassification}
-                disabled={arming}
-                aria-busy={arming}
-                className="inline-flex items-center gap-2 rounded-md bg-danger px-4 py-2 text-sm font-medium text-danger-foreground hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {arming ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ShieldAlert className="h-4 w-4" />
-                )}
-                {arming ? "Arming legal clock…" : "Confirm major incident classification"}
-              </button>
-            ) : (
-              <button
-                onClick={goNext}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Proceed to draft notification
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
+            <button
+              onClick={goNext}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Continue to classification record
+              <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
-      </div>
+      ) : (
+        <div
+          className={`rounded-xl border p-5 ${clockStarted ? "border-danger/40 bg-danger/10" : "border-warning/40 bg-warning/10"}`}
+        >
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="flex-1 min-w-[260px]">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <AlarmClockIcon started={clockStarted} />
+                {clockStarted
+                  ? "Legal clock started — 4h DORA window active"
+                  : "Confirm classification to start the legal clock"}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
+                {clockStarted
+                  ? "Notification to BaFin must be submitted by 14:45 CET. NIS2 early warning and GDPR breach assessment are running in parallel."
+                  : "Once you confirm the major-incident classification, the DORA Article 19(4)(a) 4-hour countdown starts. Reviewer approval is recorded in the auditor trail."}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {!clockStarted ? (
+                <button
+                  onClick={confirmClassification}
+                  disabled={arming}
+                  aria-busy={arming}
+                  className="inline-flex items-center gap-2 rounded-md bg-danger px-4 py-2 text-sm font-medium text-danger-foreground hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {arming ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldAlert className="h-4 w-4" />
+                  )}
+                  {arming ? "Arming legal clock…" : "Confirm major incident classification"}
+                </button>
+              ) : (
+                <button
+                  onClick={goNext}
+                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Proceed to draft notification
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -805,21 +945,32 @@ function AlarmClockIcon({ started }: { started: boolean }) {
 function StepFour({
   clockStarted,
   clockDeadline,
+  liveDraft,
+  liveRegimes,
+  major,
 }: {
   clockStarted: boolean;
   clockDeadline: number | null;
+  liveDraft: string | null;
+  liveRegimes: OverlapRegime[] | null;
+  major: boolean;
 }) {
+  const parallelRegimes = (liveRegimes ?? overlapRegimes).filter((r) => r.key !== "dora");
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
   const remainingMs = useCountdownToDeadline(clockDeadline);
+  const text = liveDraft ?? draftNotification;
+  const filename = major
+    ? "INC-2042_DORA_initial_notification.txt"
+    : "INC-2042_DORA_classification_record.txt";
 
   const copy = async () => {
     if (copying) return;
     setCopying(true);
     try {
-      await navigator.clipboard.writeText(draftNotification);
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       toast.success("Draft copied to clipboard");
       setTimeout(() => setCopied(false), 1800);
@@ -836,11 +987,11 @@ function StepFour({
     toast.loading("Composing defensible PDF (incl. auditor trail)…", { id: "export-pdf" });
     setTimeout(() => {
       try {
-        const blob = new Blob([draftNotification], { type: "text/plain;charset=utf-8" });
+        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "INC-2041_DORA_initial_notification.txt";
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -848,7 +999,7 @@ function StepFour({
         setExported(true);
         toast.success("Defensible export ready", {
           id: "export-pdf",
-          description: "INC-2041_DORA_initial_notification.txt downloaded.",
+          description: `${filename} downloaded.`,
         });
         setTimeout(() => setExported(false), 2200);
       } catch (e) {
@@ -865,7 +1016,9 @@ function StepFour({
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Draft initial notification — BaFin</h2>
+            <h2 className="text-sm font-semibold">
+              {major ? "Draft initial notification — BaFin" : "Classification record"}
+            </h2>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -901,7 +1054,7 @@ function StepFour({
           </div>
         </div>
         <pre className="whitespace-pre-wrap px-5 py-4 text-[12.5px] leading-relaxed font-mono">
-          {draftNotification}
+          {text}
         </pre>
       </div>
 
@@ -922,7 +1075,9 @@ function StepFour({
           <div className="mt-1 text-[11px] text-muted-foreground">
             {clockStarted
               ? "Submit before 14:45 CET"
-              : "Confirm classification in Step 3 to arm the timer."}
+              : major
+                ? "Confirm classification in Step 3 to arm the timer."
+                : "Not applicable — classified not major."}
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
@@ -930,14 +1085,14 @@ function StepFour({
             Parallel filings
           </div>
           <ul className="mt-3 space-y-2 text-xs">
-            <li className="flex items-center justify-between">
-              <span>NIS2 early warning · BSI</span>
-              <span className="font-mono text-warning">18h 47m</span>
-            </li>
-            <li className="flex items-center justify-between">
-              <span>GDPR Art. 33 · BfDI</span>
-              <span className="font-mono text-muted-foreground">64h 12m</span>
-            </li>
+            {parallelRegimes.map((r) => (
+              <li key={r.key} className="flex items-center justify-between gap-3">
+                <span>{r.name}</span>
+                <span className={`font-mono ${r.triggered ? "text-warning" : "text-muted-foreground"}`}>
+                  {r.triggered ? r.deadline : "Not triggered"}
+                </span>
+              </li>
+            ))}
             <li className="flex items-center justify-between">
               <span>Internal risk committee</span>
               <span className="font-mono text-muted-foreground">Next 24h</span>
