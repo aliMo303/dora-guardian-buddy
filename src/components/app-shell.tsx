@@ -10,6 +10,7 @@ import {
   AlarmClock,
   Clock,
   UserCheck,
+  Users,
 } from "lucide-react";
 import { TrustFooter } from "@/components/trust-footer";
 import { incidents } from "@/lib/mock-data";
@@ -30,6 +31,7 @@ const navItems = [
   { to: "/assessment/new", label: "New Assessment", icon: FilePlus2 },
   { to: "/regulatory-mapping", label: "Regulatory Mapping", icon: GitCompareArrows },
   { to: "/framework-explorer", label: "Framework Explorer", icon: BookOpen },
+  { to: "/about", label: "About Us", icon: Users },
 ];
 
 const notifications = [

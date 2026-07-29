@@ -14,6 +14,7 @@ import { Route as SecurityRouteImport } from './routes/security'
 import { Route as RegulatoryMappingRouteImport } from './routes/regulatory-mapping'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as FrameworkExplorerRouteImport } from './routes/framework-explorer'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssessmentNewRouteImport } from './routes/assessment.new'
 
@@ -42,6 +43,11 @@ const FrameworkExplorerRoute = FrameworkExplorerRouteImport.update({
   path: '/framework-explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -55,6 +61,7 @@ const AssessmentNewRoute = AssessmentNewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/framework-explorer': typeof FrameworkExplorerRoute
   '/privacy': typeof PrivacyRoute
   '/regulatory-mapping': typeof RegulatoryMappingRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/framework-explorer': typeof FrameworkExplorerRoute
   '/privacy': typeof PrivacyRoute
   '/regulatory-mapping': typeof RegulatoryMappingRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/framework-explorer': typeof FrameworkExplorerRoute
   '/privacy': typeof PrivacyRoute
   '/regulatory-mapping': typeof RegulatoryMappingRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/framework-explorer'
     | '/privacy'
     | '/regulatory-mapping'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/framework-explorer'
     | '/privacy'
     | '/regulatory-mapping'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/framework-explorer'
     | '/privacy'
     | '/regulatory-mapping'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   FrameworkExplorerRoute: typeof FrameworkExplorerRoute
   PrivacyRoute: typeof PrivacyRoute
   RegulatoryMappingRoute: typeof RegulatoryMappingRoute
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FrameworkExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -177,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   FrameworkExplorerRoute: FrameworkExplorerRoute,
   PrivacyRoute: PrivacyRoute,
   RegulatoryMappingRoute: RegulatoryMappingRoute,
