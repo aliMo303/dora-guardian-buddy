@@ -12,4 +12,10 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Set via the GitHub Pages workflow so assets resolve under
+  // https://<user>.github.io/<repo>/ instead of the domain root. Defaults to "/"
+  // everywhere else (Lovable preview, local dev, other deploy targets).
+  vite: {
+    base: process.env.GH_PAGES_BASE || "/",
+  },
 });
