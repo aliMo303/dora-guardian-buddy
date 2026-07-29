@@ -38,27 +38,41 @@ jobs:
         run: bun run build
 
       - name: Locate build output
-        # The exact output directory depends on the Nitro/Vite preset in use
-        # (.output/public, dist/client, dist, ...), so discover it instead of
-        # hardcoding a guess. Fails loudly with a directory listing if none
-        # of the known candidates contain an index.html.
+        # TanStack Start's SPA mode (spa.enabled, on by default) prerenders a
+        # generic app shell to a "_shell" file instead of a literal root
+        # index.html, since the cloudflare-module Nitro preset is server-
+        # oriented and doesn't prerender routes by default. Nitro also nests
+        # the public dir under the configured baseURL, so the exact path
+        # varies — search for it instead of hardcoding a guess.
         id: locate
         run: |
           set -e
-          candidate=""
-          for dir in ".output/public" "dist/client" "dist" ".vercel/output/static" "build/client" "build"; do
-            if [ -f "$dir/index.html" ]; then
-              candidate="$dir"
-              break
-            fi
+          roots=()
+          for d in ".output" "dist" "build" ".vercel/output/static"; do
+            [ -d "$d" ] && roots+=("$d")
           done
-          if [ -z "$candidate" ]; then
-            echo "::error::Could not locate build output containing index.html. Directory tree (depth 3):"
+          if [ "${#roots[@]}" -eq 0 ]; then
+            echo "::error::None of the expected output roots exist (.output, dist, build, .vercel/output/static)."
             find . -maxdepth 3 -not -path "./node_modules*" -not -path "./.git*" | sort
             exit 1
           fi
-          echo "Found build output at $candidate"
-          echo "dir=$candidate" >> "$GITHUB_OUTPUT"
+
+          shellFile=$(find "${roots[@]}" -mindepth 1 -maxdepth 8 -path "*_shell*" -name "*.html" 2>/dev/null | sort | head -n1)
+          if [ -n "$shellFile" ]; then
+            dir=$(dirname "$(dirname "$shellFile")")
+            echo "Found SPA shell at $shellFile — using $dir as site root"
+            cp "$shellFile" "$dir/index.html"
+          else
+            plainIndex=$(find "${roots[@]}" -mindepth 1 -maxdepth 6 -name index.html 2>/dev/null | sort | head -n1)
+            if [ -z "$plainIndex" ]; then
+              echo "::error::Could not locate any index.html or SPA shell in the build output."
+              find "${roots[@]}" -maxdepth 6 | sort
+              exit 1
+            fi
+            dir=$(dirname "$plainIndex")
+            echo "Found build output at $dir"
+          fi
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
 
       - name: Add SPA fallback for client-side routing
         # GitHub Pages has no server-side rewrites, so direct navigation to a
